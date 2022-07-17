@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:todo/constant.dart';
+import 'package:todo/controllers/add_task_contrller.dart';
+import 'package:todo/controllers/task_contrller.dart';
 import 'package:todo/main.dart';
+
+var taskcontroll = Get.find<TaskContrller>();
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -10,6 +14,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: const MyFloatActionButton(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: SafeArea(
           child: Stack(
               alignment: Alignment.bottomCenter,
@@ -26,15 +31,21 @@ class MyFloatActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     MyApp.changeColorTop(klightBluecolor, Brightness.light);
-    return FloatingActionButton(
-      heroTag: 'hero',
-      onPressed: () {
-        Get.toNamed('/addscreen')!.then(
-            (value) => MyApp.changeColorTop(klightBluecolor, Brightness.light));
-      },
-      backgroundColor: klightBluecolor,
-      elevation: 0,
-      child: const Icon(Icons.add),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: FloatingActionButton(
+        heroTag: 'hero',
+        onPressed: () {
+          taskcontroll.isEditing = false;
+          Get.find<AddTaskContller>().addTaskTitle!.text = '';
+          Get.find<AddTaskContller>().addTaskSubtitle!.text = '';
+          Get.toNamed('/addscreen')!.then((value) =>
+              MyApp.changeColorTop(klightBluecolor, Brightness.light));
+        },
+        backgroundColor: const Color.fromARGB(255, 5, 17, 180),
+        elevation: 0,
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }
@@ -47,37 +58,91 @@ class BottomSectionWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(1),
       width: Get.width,
       height: Get.height * 0.65,
       decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(25.0), topRight: Radius.circular(25.0))),
+            topLeft: Radius.circular(25.0),
+            topRight: Radius.circular(25.0),
+            bottomLeft: Radius.circular(25.0),
+            bottomRight: Radius.circular(25.0),
+          )),
       child: Container(
-          margin: const EdgeInsets.all(20.0),
-          child: ListView.separated(
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: const Text('Title'),
-                  subtitle: const Text("Subtitle"),
-                  trailing: Checkbox(
-                    side: const BorderSide(width: 1, color: Colors.black),
-                    activeColor: klightBluecolor,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4)),
-                    value: true,
-                    onChanged: (value) {},
-                  ),
-                );
-              },
-              separatorBuilder: (context, index) {
-                return const Divider(
-                  color: Colors.black54,
-                  height: 1,
-                );
-              },
-              itemCount: 10)),
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30.0),
+                topRight: Radius.circular(30.0)),
+            // color: Colors.red,
+          ),
+          margin:
+              const EdgeInsets.only(left: 15, right: 15, top: 10, bottom: 50),
+          child: Obx(() {
+            return ListView.separated(
+                physics: const BouncingScrollPhysics(),
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    onLongPress: () {
+                      myDialogDelete(index);
+                    },
+                    onTap: () {
+                      taskcontroll.isEditing = true;
+                      taskcontroll.index = index;
+                      Get.find<AddTaskContller>().addTaskTitle!.text =
+                          taskcontroll.taskList[index].title;
+                      Get.find<AddTaskContller>().addTaskSubtitle!.text =
+                          taskcontroll.taskList[index].subtitle;
+                      Get.toNamed('/addscreen');
+                    },
+                    title: Text(taskcontroll.taskList[index].title),
+                    subtitle: Text(taskcontroll.taskList[index].subtitle),
+                    trailing: Checkbox(
+                      side: const BorderSide(width: 1, color: Colors.black),
+                      activeColor: klightBluecolor,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4)),
+                      value: taskcontroll.taskList[index].status,
+                      onChanged: (value) {
+                        taskcontroll.taskList[index].status =
+                            !taskcontroll.taskList[index].status;
+                        taskcontroll.taskList[index] =
+                            taskcontroll.taskList[index];
+                      },
+                    ),
+                  );
+                },
+                separatorBuilder: (context, index) {
+                  return const SizedBox.shrink();
+                  // const Divider(
+                  //   color: Colors.black54,
+                  //   height: 1,
+                  // );
+                },
+                itemCount: taskcontroll.taskList.length);
+          })),
     );
+  }
+
+  Future<dynamic> myDialogDelete(int index) {
+    return Get.defaultDialog(
+        title: 'حذف',
+        titleStyle: TextStyle(
+            fontWeight: FontWeight.bold, fontSize: 20, color: Colors.red[800]),
+        middleText: 'آیا می خواهید این یادداشت را حذف کنید؟',
+        confirmTextColor: Colors.black87,
+        buttonColor: Colors.white60,
+        radius: 15,
+        cancelTextColor: Colors.black,
+        textCancel: 'آره',
+        textConfirm: 'نه',
+        onCancel: () {
+          taskcontroll.taskList.removeAt(index);
+        },
+        onConfirm: () {
+          Get.back();
+        });
   }
 }
 
@@ -135,13 +200,15 @@ class TopSectionWidget extends StatelessWidget {
           const SizedBox(
             height: 5,
           ),
-          const Padding(
-            padding: EdgeInsets.only(left: 45),
-            child: Text(
-              'Tasks ',
-              style: TextStyle(fontSize: 15, color: fontcolor),
-            ),
-          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 45),
+            child: Obx((() {
+              return Text(
+                '${taskcontroll.taskList.length} Tasks ',
+                style: const TextStyle(fontSize: 15, color: fontcolor),
+              );
+            })),
+          )
         ],
       ),
     );
